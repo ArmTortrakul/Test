@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXR AR</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #ui { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div id="ui">UI Element</div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.136.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@magicleap/prismatic@1.5.1/dist/prismatic.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@webxr-input-profiles/motion-controllers"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@webxr-polyfill/polyfill@latest/build/webxr-polyfill.min.js"></script>
+    <script>
+        // Check if WebXR is available
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+                if (supported) {
+                    // Start AR session
+                    startAR();
+                } else {
+                    alert('AR not supported');
+                }
+            });
+        } else {
+            alert('WebXR not available');
+        }
+
+        function startAR() {
+            navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['local-floor'] }).then((session) => {
+                const renderer = new THREE.WebGLRenderer({ alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.xr.enabled = true;
+                document.body.appendChild(renderer.domElement);
+
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+                const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+                light.position.set(0.5, 1, 0.25);
+                scene.add(light);
+
+                function animate() {
+                    renderer.setAnimationLoop(() => {
+                        renderer.render(scene, camera);
+
+                        const ui = document.getElementById('ui');
+                        const cameraDirection = new THREE.Vector3();
+                        camera.getWorldDirection(cameraDirection);
+                        cameraDirection.y = 0; // Lock pitch
+                        cameraDirection.normalize();
+
+                        const uiPosition = camera.position.clone().add(cameraDirection.multiplyScalar(0.5));
+                        ui.style.transform = `translate(-50%, -50%) translate(${uiPosition.x * 100}px, ${-uiPosition.z * 100}px)`;
+                    });
+                }
+
+                renderer.xr.setSession(session);
+                animate();
+            });
+        }
+    </script>
+</body>
+</html>
